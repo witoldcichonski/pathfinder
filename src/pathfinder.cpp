@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cstring>
 #include <deque>
+#include <climits>
 #include "pathfinder.h"
 
 PathFinder::PathFinder()
@@ -9,12 +10,12 @@ PathFinder::PathFinder()
 
 }
 
-void PathFinder::setInputFileName(std::string fileName)
+void PathFinder::setInputFileName(const std::string &fileName)
 {
     m_inputFile = fileName;
 }
 
-void PathFinder::setOutputFileName(std::string fileName)
+void PathFinder::setOutputFileName(const std::string &fileName)
 {
     m_outputFile = fileName;
 }
@@ -89,8 +90,6 @@ return true;
 
 }
 
-//TODO: exceptions handling from stoi - return false
-//add tests strings - words
 bool PathFinder::readMazeSizeFromFile()
 {
     std::string singleLine;
@@ -100,8 +99,16 @@ bool PathFinder::readMazeSizeFromFile()
 
     if(!inputStream.eof())
     {
-        col = stoi(singleLine);
-        singleLine.clear();
+        try
+        {
+            col = stoi(singleLine);
+        }
+        catch(...)
+        {
+            std::cout<<"Invalid type"<<std::endl;
+            closeInputFile();
+            return false;
+        }
     }
     else
     {
@@ -109,11 +116,21 @@ bool PathFinder::readMazeSizeFromFile()
         return false;
     }
 
+    singleLine.clear();
     getline(inputStream, singleLine);
 
     if(!inputStream.eof())
     {
-        row = stoi(singleLine);
+        try
+        {
+            row = stoi(singleLine);
+        }
+        catch(...)
+        {
+            std::cout<<"Invalid type"<<std::endl;
+            closeInputFile();
+            return false;
+        }
     }
     else
     {
@@ -121,17 +138,13 @@ bool PathFinder::readMazeSizeFromFile()
         return false;
     }
 
+
     return true;
 }
 
+
 bool PathFinder::readRowMazeFromFile()
 {
-
-    rawMaze = new char *[row];
-    for(int i = 0; i <row; i++)
-    {
-        rawMaze[i] = new char[col];
-    }
 
     std::string singleLine;
     singleLine.clear();
@@ -144,7 +157,13 @@ bool PathFinder::readRowMazeFromFile()
 
             if(singleLine.size() == col)
             {
-                strncpy(rawMaze[i],singleLine.c_str(),singleLine.size());
+                std::vector<char> vch;
+                for(auto& ch : singleLine)
+                {
+                    vch.push_back(ch);
+                }
+                rawMaze.push_back(vch);
+
                 singleLine.clear();
             }
             else
@@ -169,42 +188,40 @@ void PathFinder::closeInputFile()
      inputStream.close();
 }
 
+//TODO for loops to iterators
 bool PathFinder::convertRowIntoBinaryMaze()
 {
-    binMaze = new int *[row];
-    for(auto i = 0; i <row; i++)
-    {
-        binMaze[i] = new int[col];
-    }
 
     bool startPoint = false;
     bool endPoint = false;
 
     for(auto i=0; i < row; i++)
     {
+        std::vector<int> bm;
         for(auto j=0; j < col; j++)
         {
 
+
             if(rawMaze[i][j] == '#')
             {
-                binMaze[i][j]=0;
+                bm.push_back(0);
             }
             else if(rawMaze[i][j] == ' ')
             {
-                binMaze[i][j]=1;
+                bm.push_back(1);
             }
             else if(rawMaze[i][j] == 'S')
             {
                 start[0] = i;
                 start[1] = j;
-                binMaze[i][j]=2;
+                bm.push_back(2);
                 startPoint = true;
             }
             else if(rawMaze[i][j] == 'E')
             {
                 end[0] = i;
                 end[1] = j;
-                binMaze[i][j]=3;
+                bm.push_back(3);
                 endPoint = true;
             }
             else
@@ -213,6 +230,7 @@ bool PathFinder::convertRowIntoBinaryMaze()
                 return false;
             }
         }
+         binMaze.push_back(bm);
     }
 
     if(!(startPoint && endPoint))
@@ -243,7 +261,7 @@ bool PathFinder::runLeeAlgorithm()
 
     q.push_back({a, b, 1});
 
-    minDist = (int)row*col;
+    minDist = INT_MAX;
 
     int it = 0;
     while(it<q.size())
@@ -276,9 +294,9 @@ bool PathFinder::runLeeAlgorithm()
         }
     }
 
-    if (minDist != (int)row*col)
+    if (minDist != INT_MAX)
     {
-        savePath(q, it);
+        savePath(q);
     }
     else
     {
@@ -297,7 +315,7 @@ bool PathFinder::isValid(bool isChecked, int ver, int hor)
             && binMaze[ver][hor] && !isChecked;
 }
 
-void PathFinder::savePath(std::deque<Point> &points, int it )
+void PathFinder::savePath(std::deque<Point> &points )
 {
     int p;
     for(p =0; p<points.size(); p++)
@@ -307,7 +325,6 @@ void PathFinder::savePath(std::deque<Point> &points, int it )
             break;
         }
     }
-
 
     Point currentPoint = points.at(p);
     path.push_back(points.at(p));
@@ -332,9 +349,9 @@ bool PathFinder::isCorrectNode(Point currentPoint, Point nextPoint)
 
 void PathFinder::applyPathOnRawMaze()
 {
-    for(auto i=0; i < path.size(); i++)
+    for(auto &it:path)
     {
-        rawMaze[path.at(i).x][path.at(i).y] = '*';
+        rawMaze[it.x][it.y] = '*';
     }
 }
 
@@ -359,36 +376,37 @@ void PathFinder::claseOutputFile()
 
 void PathFinder::printOutput()
 {
-    std::string singleLine;
+    // vector <vector> !!
+    std::vector<std::vector <char>>::iterator it;
 
-    for(auto i =0; i<row; i++)
+    for(it=rawMaze.begin(); it<rawMaze.end(); it++)
     {
-        singleLine.assign(rawMaze[i], col);
+        std::string singleLine(it->begin(), it->end());
         outputStream<< singleLine<<std::endl;
     }
 
-    outputStream<<minDist;
+    outputStream<<minDist<<std::endl;
 }
 
-int PathFinder::getMazeLength()
+int PathFinder::getMazeLength() const
 {
     return row;
 }
-int PathFinder::getMazeWidth()
+int PathFinder::getMazeWidth() const
 {
     return col;
 }
-void PathFinder::getStartPoint(int *startPoint)
+void PathFinder::getStartPoint(int *startPoint) const
 {
     startPoint[0] = start[0];
     startPoint[1] = start[1];
 }
-void PathFinder::getEndPoint(int *endPoint)
+void PathFinder::getEndPoint(int *endPoint) const
 {
     endPoint[0] = end[0];
     endPoint[1] = end[1];
 }
-int PathFinder::getPathLength()
+int PathFinder::getPathLength() const
 {
     return minDist;
 }

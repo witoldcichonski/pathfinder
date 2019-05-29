@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 #include <deque>
-#include<vector>
+#include <vector>
 #include <cstdint>
 
 const int COORDINATES = 2;
@@ -15,16 +15,16 @@ class PathFinder
 public:
     PathFinder();
 
-    void setInputFileName(std::string fileName);
-    void setOutputFileName(std::string fileName);
+    void setInputFileName(const std::string &fileName);
+    void setOutputFileName(const std::string &fileName);
     bool getInputData();
     bool solveMaze();
     bool saveOutputData();
-    int getMazeLength();
-    int getMazeWidth();
-    void getStartPoint(int *startPoint);
-    void getEndPoint(int *endPoint);
-    int getPathLength();
+    int getMazeLength() const;
+    int getMazeWidth() const;
+    void getStartPoint(int *startPoint) const;
+    void getEndPoint(int *endPoint) const;
+    int getPathLength() const;
 
     ~PathFinder();
 private:
@@ -36,8 +36,9 @@ private:
     std::fstream outputStream;
     int col;
     int row;
-    char **rawMaze;
-    int **binMaze;
+    std::vector<std::vector <char>> rawMaze;
+    std::vector<std::vector<int>> binMaze;
+
     int minDist;
     int start[COORDINATES];
     int end[COORDINATES];
@@ -57,7 +58,7 @@ private:
     bool convertRowIntoBinaryMaze();
     bool runLeeAlgorithm();
     bool isValid(bool isChecked, int ver, int hor);
-    void savePath(std::deque<Point> &points, int it );
+    void savePath(std::deque<Point> &points);
     bool isCorrectNode(Point currentPoint, Point nextPoint);
     void applyPathOnRawMaze();
     bool openOutputFile();
@@ -67,3 +68,4 @@ private:
 };
 
 #endif // PATHFINDER_H
+
